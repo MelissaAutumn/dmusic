@@ -131,6 +131,10 @@ void DmRiff_readDouble(DmRiff* slf, double* buf) {
 	DmRiff_read(slf, buf, sizeof *buf);
 }
 
+void DmRiff_readInt64(DmRiff* slf, int64_t* buf) {
+	DmRiff_read(slf, buf, sizeof *buf);
+}
+
 char const* DmRiff_readString(DmRiff* slf) {
 	if (slf == NULL) {
 		return "";

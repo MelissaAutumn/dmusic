@@ -673,13 +673,15 @@ static void DmPerformance_handleCommandMessage(DmPerformance* slf, DmMessage_Com
 		Dm_report(DmLogLevel_WARN, "DmPerformance: Command message with command %d not implemented", msg->command);
 	}
 
-	DmPattern* pttn = DmStyle_getRandomPattern(slf->style, slf->groove, msg->command);
-	if (pttn == NULL) {
-		Dm_report(DmLogLevel_INFO, "DmPerformance: No suitable pattern found. Silence ensues ...", msg->command);
-		return;
-	}
+	if (slf->style) {
+		DmPattern* pttn = DmStyle_getRandomPattern(slf->style, slf->groove, msg->command);
+		if (pttn == NULL) {
+			Dm_report(DmLogLevel_INFO, "DmPerformance: No suitable pattern found. Silence ensues ...", msg->command);
+			return;
+		}
 
-	DmPerformance_playPattern(slf, pttn);
+		DmPerformance_playPattern(slf, pttn);
+	}
 }
 
 static void DmPerformance_handleSegmentMessage(DmPerformance* slf, DmMessage_SegmentChange* msg) {
@@ -862,6 +864,15 @@ static void DmPerformance_handleMessage(DmPerformance* slf, DmMessage* msg) {
 		}
 
 		break;
+	case DmMessage_TIME_SIGNATURE:
+		// No-op right now
+		Dm_report(DmLogLevel_TRACE,
+		  "DmPerformance(Message): time=%d type=time-signature beat=%d beat_per_measure=%d grids_per_beat=%d",
+		  slf->time,
+		  msg->time_signature.time_signature.beat,
+		  msg->time_signature.time_signature.beats_per_measure,
+		  msg->time_signature.time_signature.grids_per_beat);
+		break;
 	default:
 		Dm_report(DmLogLevel_ERROR, "DmPerformance: Message type %d not implemented", msg->type);
 		break;
@@ -881,6 +892,10 @@ DmResult DmPerformance_renderPcm(DmPerformance* slf, void* buf, size_t len, DmRe
 
 	DmMessage msg_ctrl;
 	DmMessage msg_midi;
+	DmMessage msg_wave;
+	bool ok_ctrl = 0;
+	bool ok_midi = 0;
+	bool ok_wave = 0;
 
 	if (mtx_lock(&slf->lock) != thrd_success) {
 		return DmResult_MUTEX_ERROR;
@@ -889,15 +904,16 @@ DmResult DmPerformance_renderPcm(DmPerformance* slf, void* buf, size_t len, DmRe
 	size_t sample = 0;
 	while (sample < len) {
 
-		bool ok_ctrl = DmMessageQueue_get(&slf->control_queue, &msg_ctrl);
-		bool ok_midi = DmMessageQueue_get(&slf->music_queue, &msg_midi);
+		ok_ctrl = DmMessageQueue_get(&slf->control_queue, &msg_ctrl);
+		ok_midi = DmMessageQueue_get(&slf->music_queue, &msg_midi);
+		ok_wave = DmMessageQueue_get(&slf->wave_queue, &msg_wave);
 
-		if (!ok_ctrl && !ok_midi) {
+		if (!ok_ctrl && !ok_midi && !ok_wave) {
 			// No more messages to process.
 			break;
 		}
 
-		if (ok_ctrl && ok_midi) {
+		if (ok_ctrl && ok_midi && ok_wave) {
 			// Both queues have a message, choose the one that happens
 			// earlier while preferring control messages
 			ok_ctrl = msg_ctrl.time <= msg_midi.time;
@@ -930,7 +946,7 @@ DmResult DmPerformance_renderPcm(DmPerformance* slf, void* buf, size_t len, DmRe
 
 		// Render the samples from now until the message occurs and advance the buffer pointer
 		// and time and sample counters.
-		if (offset_samples > 0) {
+		if (offset_samples > 0 && ok_midi) {
 			size_t bytes_rendered = DmSynth_render(&slf->synth, buf, offset_samples, opts);
 			buf = (uint8_t*) buf + bytes_rendered;
 		}
@@ -953,7 +969,9 @@ DmResult DmPerformance_renderPcm(DmPerformance* slf, void* buf, size_t len, DmRe
 
 	// Render the remaining samples
 	uint32_t remaining_samples = (uint32_t) (len - sample);
-	(void) DmSynth_render(&slf->synth, buf, remaining_samples, opts);
+	if (ok_midi) {
+		(void) DmSynth_render(&slf->synth, buf, remaining_samples, opts);
+	}
 	slf->time +=
 	    Dm_getDurationForSampleCount(remaining_samples, slf->time_signature, slf->tempo, slf->sample_rate, channels);
 

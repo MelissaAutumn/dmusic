@@ -74,6 +74,11 @@
 #define DM_FOURCC_RHTM DM_FOURCC('r', 'h', 't', 'm')
 #define DM_FOURCC_PREF DM_FOURCC('p', 'r', 'e', 'f')
 #define DM_FOURCC_PRFC DM_FOURCC('p', 'r', 'f', 'c')
+#define DM_FOURCC_WAVT DM_FOURCC('w', 'a', 'v', 't')
+#define DM_FOURCC_TRKX DM_FOURCC('t', 'r', 'k', 'x')
+#define DM_FOURCC_TIMS DM_FOURCC('T', 'I', 'M', 'S')
+// The `I` is for item, otherwise there would be a re-define.
+#define DM_FOURCC_TIMI DM_FOURCC('t', 'i', 'm', 's')
 
 typedef struct DmRiff {
 	uint8_t const* mem;
@@ -130,6 +135,7 @@ DMINT void DmRiff_readShort(DmRiff* slf, int16_t* buf);
 DMINT void DmRiff_readInt(DmRiff* slf, int32_t* buf);
 DMINT void DmRiff_readDword(DmRiff* slf, uint32_t* buf);
 DMINT void DmRiff_readDouble(DmRiff* slf, double* buf);
+DMINT void DmRiff_readInt64(DmRiff* slf, int64_t* buf);
 DMINT char const* DmRiff_readString(DmRiff* slf);
 DMINT uint16_t* DmRiff_readStringUtf(DmRiff* slf);
 DMINT void DmRiff_reportDone(DmRiff* slf);

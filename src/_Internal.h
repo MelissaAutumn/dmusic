@@ -42,6 +42,27 @@ typedef enum DmPatternSelectMode {
 	DmPatternSelect_RANDOM_ROW = 5
 } DmPatternSelectMode;
 
+typedef enum DmTrackConfig {
+	DmTrackConfig_INVALID = 0,
+	DmTrackConfig_OVERRIDE_ALL = 1,
+	DmTrackConfig_OVERRIDE_PRIMARY = 2,
+	DmTrackConfig_FALLBACK = 4,
+	DmTrackConfig_CONTROL_ENABLED = 8,
+	DmTrackConfig_PLAY_ENABLED = 0x10,
+	DmTrackConfig_NOTIFICATION_ENABLED = 0x20,
+	DmTrackConfig_PLAY_CLOCKTIME = 0x40,
+	DmTrackConfig_PLAY_COMPOSE = 0x80,
+	DmTrackConfig_LOOP_COMPOSE = 0x100,
+	DmTrackConfig_COMPOSING = 0x200,
+	DmTrackConfig_CONTROL_PLAY = 0x10000,
+	DmTrackConfig_CONTROL_NOTIFICATION = 0x20000,
+	DmTrackConfig_TRANS1_FROMSEGSTART = 0x400,
+	DmTrackConfig_TRANS1_FROMSEGCURRENT = 0x800,
+	DmTrackConfig_TRANS1_TOSEGSTART = 1000,
+} DmTrackConfig;
+
+#define DmTrackConfig_DEFAULT = (DmTrackConfig_CONTROL_ENABLED | DmTrackConfig_PLAY_ENABLED | DmTrackConfig_NOTIFICATION_ENABLED)
+
 typedef struct DmTimeSignature {
 	uint8_t beats_per_measure;
 	uint8_t beat;
@@ -343,9 +364,16 @@ typedef enum DmMessageType {
 	DmMessage_STYLE,
 	DmMessage_BAND,
 	DmMessage_TEMPO,
+	DmMessage_TIME_SIGNATURE,
 	DmMessage_CHORD,
 	DmMessage_COMMAND,
 } DmMessageType;
+
+typedef struct DmMessage_TimeSignature {
+	DmMessageType type;
+	uint32_t time;
+	DmTimeSignature time_signature;
+} DmMessage_TimeSignature;
 
 typedef struct DmMessage_Tempo {
 	DmMessageType type;
@@ -443,6 +471,7 @@ typedef union DmMessage {
 		uint32_t time;
 	};
 
+	DmMessage_TimeSignature time_signature;
 	DmMessage_Tempo tempo;
 	DmMessage_Command command;
 	DmMessage_Chord chord;
@@ -505,6 +534,26 @@ struct DmSegment {
 	/// \brief Default resolution.
 	DmResolveFlags resolution;
 
+	/// \brief Length of the segment in reference time
+	/// \note Only in SGT files for DX8 and above
+	int64_t length_rt;
+
+	/// \brief Segment-level flag
+	/// \note Only in SGT files for DX8 and above
+	uint32_t flags;
+
+	/// \brief Reserved / padding
+	/// \note Only in SGT files for DX8 and above
+	uint32_t reserved;
+
+	/// \brief Start of the looping position in reference time
+	/// \note Only in SGT files for DX8 and above
+	int64_t loop_start_rt;
+
+	/// \brief End of the looping position in reference time
+	/// \note Only in SGT files for DX8 and above
+	int64_t loop_end_rt;
+
 	DmGuid guid;
 	DmUnfo info;
 	DmVersion version;
@@ -542,6 +591,7 @@ struct DmPerformance {
 
 	DmMessageQueue control_queue;
 	DmMessageQueue music_queue;
+	DmMessageQueue wave_queue;
 
 	DmSegment* segment;
 	uint32_t segment_start;

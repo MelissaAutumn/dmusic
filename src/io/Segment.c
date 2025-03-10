@@ -2,6 +2,48 @@
 // SPDX-License-Identifier: MIT-Modern-Variant
 #include "_Internal.h"
 
+static DmResult DmSegment_parseTimeSignature(DmMessageList* slf, DmRiff* rif) {
+	uint32_t item_size = 0;
+	DmRiff_readDword(rif, &item_size);
+
+	DmMessage msg;
+	uint32_t item_count = (rif->len - rif->pos) / item_size;
+	for (uint32_t i = 0; i < item_count; ++i) {
+		uint32_t end_position = rif->pos + item_size;
+
+		memset(&msg, 0, sizeof msg);
+		msg.type = DmMessage_TIME_SIGNATURE;
+
+		DmRiff_readDword(rif, &msg.time);
+		DmRiff_read(rif, &msg.time_signature.time_signature, sizeof(DmTimeSignature));
+
+		DmResult rv = DmMessageList_add(slf, msg);
+		if (rv != DmResult_SUCCESS) {
+			return rv;
+		}
+
+		rif->pos = end_position;
+	}
+
+	return DmResult_SUCCESS;
+}
+
+static DmResult DmSegment_parseTimeSignatureTrackList(DmMessageList* slf, DmRiff* rif) {
+	DmRiff cnk;
+	while (DmRiff_readChunk(rif, &cnk)) {
+		if (DmRiff_is(&cnk, DM_FOURCC_TIMI, 0)) {
+			DmResult rv = DmSegment_parseTimeSignature(slf, &cnk);
+			if (rv != DmResult_SUCCESS) {
+				return rv;
+			}
+		}
+
+		DmRiff_reportDone(&cnk);
+	}
+
+	return DmResult_SUCCESS;
+}
+
 static DmResult DmSegment_parseTempoTrack(DmMessageList* slf, DmRiff* rif) {
 	uint32_t item_size = 0;
 	DmRiff_readDword(rif, &item_size);
@@ -267,6 +309,11 @@ static DmResult DmSegment_parseStyleTrack(DmMessageList* slf, DmRiff* rif) {
 	return DmResult_SUCCESS;
 }
 
+static DmResult DmSegment_parseWaveTrackList(DmMessageList* slf, DmRiff* rif) {
+
+	return DmResult_SUCCESS;
+}
+
 static DmResult DmSegment_parseTrack(DmMessageList* slf, DmRiff* rif) {
 	DmGuid class_id;
 	uint32_t position;
@@ -293,6 +340,16 @@ static DmResult DmSegment_parseTrack(DmMessageList* slf, DmRiff* rif) {
 			rv = DmSegment_parseStyleTrack(slf, &cnk);
 		} else if (DmRiff_is(&cnk, DM_FOURCC_RIFF, DM_FOURCC_DMBT)) {
 			rv = DmSegment_parseBandTrack(slf, &cnk);
+		} else if (DmRiff_is(&cnk, DM_FOURCC_TRKX, 0)) {
+			// Read for now until we figure out what they're good for
+			DmTrackConfig flags = DmTrackConfig_INVALID;
+			uint32_t priority = 0;
+			DmRiff_readDword(&cnk, (uint32_t*)&flags);
+			DmRiff_readDword(&cnk, &priority);
+		} else if (DmRiff_is(&cnk, DM_FOURCC_LIST, DM_FOURCC_TIMS)) {
+			rv = DmSegment_parseTimeSignatureTrackList(slf, &cnk);
+		} else if (DmRiff_is(&cnk, DM_FOURCC_LIST, DM_FOURCC_WAVT)) {
+			DmSegment_parseWaveTrackList(slf, &cnk);
 		}
 
 		if (rv != DmResult_SUCCESS) {
@@ -338,7 +395,14 @@ DmResult DmSegment_parse(DmSegment* slf, void* buf, size_t len) {
 			DmRiff_readDword(&cnk, &slf->play_start);
 			DmRiff_readDword(&cnk, &slf->loop_start);
 			DmRiff_readDword(&cnk, &slf->loop_end);
-			DmRiff_readDword(&cnk, &slf->resolution);
+			DmRiff_readDword(&cnk, (uint32_t*)&slf->resolution);
+			if (cnk.len > 40) { // DX8 and above
+				DmRiff_readInt64(&cnk, &slf->length_rt);
+				DmRiff_readDword(&cnk, &slf->flags);
+				DmRiff_readDword(&cnk, &slf->reserved);
+				DmRiff_readInt64(&cnk, &slf->loop_start_rt);
+				DmRiff_readInt64(&cnk, &slf->loop_end_rt);
+			}
 		} else if (DmRiff_is(&cnk, DM_FOURCC_GUID, 0)) {
 			DmGuid_parse(&slf->guid, &cnk);
 		} else if (DmRiff_is(&cnk, DM_FOURCC_VERS, 0)) {
