@@ -304,7 +304,7 @@ typedef enum DmVariationType {
 	DmVariation_NO_REPEAT = 3,
 
 	/// \brief Play randomly, but do not repeat any variation until all have played.
-	DmVariation_RANDOM_ROW = 3,
+	DmVariation_RANDOM_ROW = 4,
 } DmVariationType;
 
 typedef struct DmPartReference {
