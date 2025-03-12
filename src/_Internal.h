@@ -367,7 +367,68 @@ typedef enum DmMessageType {
 	DmMessage_TIME_SIGNATURE,
 	DmMessage_CHORD,
 	DmMessage_COMMAND,
+	DmMessage_WAVE_LIST,
 } DmMessageType;
+
+typedef enum DmWaveTrackHeaderFlags {
+	DmWaveTrack_NONE = 0x0,
+	DmWaveTrack_SYNC_VAR = 0x1,			// Retrieve variations from GetParam(GUID_Variations)
+	DmWaveTrack_PERSIST_CONTROL = 0x2	// Retrieve variations from previous playback instance
+} DmWaveTrackHeaderFlags;
+
+typedef enum DmWaveItemHeaderFlags {
+	DmWaveItem_NONE = 0,
+	DmWaveItem_STREAMING = 2,
+	DmWaveItem_NO_INVALIDATE = 4,
+	DmWaveItem_NO_PRE_ROLL = 8,
+	DmWaveItem_IGNORE_LOOPS = 0x20,
+} DmWaveItemHeaderFlags;
+
+// 'waih'
+typedef struct DmWaveItem {
+	// Header
+	int32_t volume;
+	int32_t pitch;
+	uint32_t variations;
+	int64_t time_rt;			// Reference Time (affected by tempo)
+	int64_t start_offset_rt;
+	int64_t reserved_rt;
+	int64_t duration_rt;
+	int32_t logical_time_mt;	// Music Time (unaffected by tempo)
+	uint32_t loop_start;
+	uint32_t loop_end;
+	DmWaveItemHeaderFlags flags;
+	int32_t volume_range;
+	int32_t pitch_range;
+	// References
+	DmReference* wave_files;
+	size_t wave_files_len;
+} DmWaveItem;
+
+// 'wavp'
+typedef struct DmWavePart {
+	int32_t volume;
+	uint32_t variations;
+	uint32_t performance_channel;
+	uint32_t lock_to_part;
+	DmVariationType flags;
+	uint32_t index;
+} DmWavePart;
+
+// 'wath'
+typedef struct DmWaveTrack {
+	// The WaveTrackHeader
+	int32_t volume;
+	DmWaveTrackHeaderFlags flags;
+	DmWavePart* wave_parts;
+	size_t wave_part_len;
+} DmWaveTrack;
+
+// 'wavt'
+typedef struct DmMessage_WaveList {
+	DmMessageType type;
+	DmWaveTrack wave_track;
+} DmMessage_WaveList;
 
 typedef struct DmMessage_TimeSignature {
 	DmMessageType type;
@@ -481,6 +542,7 @@ typedef union DmMessage {
 	DmMessage_Note note;
 	DmMessage_Control control;
 	DmMessage_PitchBend pitch_bend;
+	DmMessage_WaveList wave_list;
 } DmMessage;
 
 DmArray_DEFINE(DmMessageList, DmMessage);

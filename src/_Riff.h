@@ -75,6 +75,11 @@
 #define DM_FOURCC_PREF DM_FOURCC('p', 'r', 'e', 'f')
 #define DM_FOURCC_PRFC DM_FOURCC('p', 'r', 'f', 'c')
 #define DM_FOURCC_WAVT DM_FOURCC('w', 'a', 'v', 't')
+#define DM_FOURCC_WATH DM_FOURCC('w', 'a', 't', 'h')
+#define DM_FOURCC_WAVP DM_FOURCC('w', 'a', 'v', 'p')
+#define DM_FOURCC_WAPH DM_FOURCC('w', 'a', 'p', 'h')
+#define DM_FOURCC_WAVI DM_FOURCC('w', 'a', 'v', 'i')
+#define DM_FOURCC_WAIH DM_FOURCC('w', 'a', 'i', 'h')
 #define DM_FOURCC_TRKX DM_FOURCC('t', 'r', 'k', 'x')
 #define DM_FOURCC_TIMS DM_FOURCC('T', 'I', 'M', 'S')
 // The `I` is for item, otherwise there would be a re-define.
